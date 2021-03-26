@@ -78,12 +78,18 @@
                                 console.log('Public Token is not defined');
                             }
 
-                            jQuery('.woocommerce-error').remove();
+                            if ($('#payment_method_splitit:checked').val() == "splitit") {
+                                jQuery('.woocommerce-error').remove();
 
-                            if(jQuery('form[name="checkout"]').length) {
-                                jQuery('form[name="checkout"]').prepend('<ul class="woocommerce-error">' + data.error.message + '</ul>');
-                            } else {
-                                jQuery('#order_review').prepend('<ul class="woocommerce-error">' + data.error.message + '</ul>');
+                                if (jQuery('form[name="checkout"]').length) {
+                                    jQuery('form[name="checkout"]').prepend('<ul class="woocommerce-error">' + data.error.message + '</ul>');
+                                } else {
+                                    jQuery('#order_review').prepend('<ul class="woocommerce-error">' + data.error.message + '</ul>');
+                                }
+                            }
+
+                            if(!$('#custom_splitit_error').length) {
+                                $('.payment_box.payment_method_splitit').prepend('<p id="custom_splitit_error" style="color:red;">' + data.error.message + '</p>');
                             }
                             $(a).unblock();//Stop spinner
                             jQuery(overlay).unblock();//Stop spinner
@@ -149,6 +155,51 @@
         }
     });
 
+    var isRefreshPage = false;
+    jQuery('form.checkout').on('change','input[name^="shipping_method"]',function() {
+
+        jQuery(a).block({
+            message: null,
+            overlayCSS: {
+                background: "#fff",
+                opacity: .6
+            }
+        });
+
+        var val = jQuery( this ).val();
+        if (val) {
+            isRefreshPage = true;
+        }
+    });
+
+    jQuery('body').on('updated_checkout', function(){
+        if (isRefreshPage) {
+            var planNumber = flexFieldsInstance.getSessionParams().planNumber;
+
+            jQuery.ajax({
+                url: ajaxurl,
+                data: {
+                    'action': 'flex_field_initiate_method',
+                    'ipn': planNumber,
+                    'order_id': "<order_id>",
+                    'numberOfInstallments': '',
+                },
+                method: "POST",
+                dataType: 'json',
+                success: function (data) {
+                    flexFieldsInstance.synchronizePlan();
+                    jQuery(a).unblock();//Stop spinner
+                    jQuery(overlay).unblock();//Stop spinner
+                }
+            });
+
+        }
+    });
+
+    jQuery('form.checkout').on('change','input[name^="payment_method"]',function() {
+        jQuery('.woocommerce-error').remove();
+    });
+
     function performPayment(sender) {
         if (jQuery('input[name="payment_method"]:checked').val() != "splitit") {
             return;
@@ -177,59 +228,62 @@
                 PhoneNumber: jQuery('input[name="billing_phone"]').val(),
                 CultureName: "<culture>"
             }
-        });
+        }, function() {
 
-        var result = {};
-        jQuery.each(jQuery('form.checkout').serializeArray(), function () {
-            result[this.name] = this.value;
-        });
+            var result = {};
+            jQuery.each(jQuery('form.checkout').serializeArray(), function () {
+                result[this.name] = this.value;
+            });
 
-        jQuery.ajax({
-            url: ajaxurl,
-            method: 'POST',
-            dataType: 'json',
-            async: false,
-            data: {
-                action: 'checkout_validate',
-                fields: result,
-                ipn: localStorage.getItem('ipn')
-            },
-            success: function (data) {
-                if (data.result == 'success') {
-                    jQuery('.woocommerce-error').remove();
+            jQuery.ajax({
+                url: ajaxurl,
+                method: 'POST',
+                dataType: 'json',
+                async: false,
+                data: {
+                    action: 'checkout_validate',
+                    fields: result,
+                    ipn: localStorage.getItem('ipn')
+                },
+                success: function (data) {
+                    if (data.result == 'success') {
+                        jQuery('.woocommerce-error').remove();
 
-                    jQuery(sender).attr('disabled', true);
+                        jQuery(sender).attr('disabled', true);
 
-                    flexFieldsInstance.checkout();
-                } else {
-                    var $form = jQuery('form.woocommerce-checkout');
-
-                    jQuery('.woocommerce-error').remove();
-
-
-                    if (data.messages) {
-                        $form.prepend('<ul class="woocommerce-error">' + data.messages + '</ul>');
+                        flexFieldsInstance.checkout();
                     } else {
-                        $form.prepend('<ul class="woocommerce-error">' + data + '</ul>');
+                        var $form = jQuery('form.woocommerce-checkout');
+
+                        jQuery('.woocommerce-error').remove();
+
+
+                        if (data.messages) {
+                            $form.prepend('<ul class="woocommerce-error">' + data.messages + '</ul>');
+                        } else {
+                            $form.prepend('<ul class="woocommerce-error">' + data + '</ul>');
+                        }
+
+                        $form.find('.input-text, select').blur();
+
+                        jQuery('html, body').animate({
+                            scrollTop: (jQuery('form.woocommerce-checkout').offset().top - 100)
+                        }, 1000);
+
+                        jQuery('#place_order').attr('disabled', false);
+                        jQuery(overlay).unblock();//Stop spinner
                     }
-
-                    $form.find('.input-text, select').blur();
-
+                },
+                error: function (error) {
                     jQuery('html, body').animate({
                         scrollTop: (jQuery('form.woocommerce-checkout').offset().top - 100)
                     }, 1000);
-
-                    jQuery('#place_order').attr('disabled', false);
                     jQuery(overlay).unblock();//Stop spinner
                 }
-            },
-            error: function (error) {
-                jQuery('html, body').animate({
-                    scrollTop: (jQuery('form.woocommerce-checkout').offset().top - 100)
-                }, 1000);
-                jQuery(overlay).unblock();//Stop spinner
-            }
+            });
+
         });
+
     }
 
 

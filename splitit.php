@@ -223,9 +223,8 @@ function split_init_gateway_class()
             $flex_fields_form = file_get_contents(__DIR__ . '/template/flex-field-index.php');
 
             $tmp = str_replace("<order_id>", $order_id, $flex_fields_form);
-            $tmp2 = str_replace("<useSandboxApi>", $sandbox, $tmp);
-            $tmp3 = str_replace("<debug>", $sandbox, $tmp2);
-            $result = str_replace("<culture>", str_replace("_", "-", get_locale()), $tmp3);
+            $tmp2 = str_replace("<debug>", $sandbox, $tmp);
+            $result = str_replace("<culture>", str_replace("_", "-", get_locale()), $tmp2);
 
             echo $result;
 
@@ -591,16 +590,16 @@ function split_init_gateway_class()
                         </legend>
                         <label for="<?php echo esc_attr($field_key); ?>" class="switch">
                             <input <?php disabled($data['disabled'], true); ?>
-                                    class="<?php echo esc_attr($data['class']); ?>" type="checkbox"
-                                    name="<?php echo esc_attr($field_key); ?>" id="<?php echo esc_attr($field_key); ?>"
-                                    style="<?php echo esc_attr($data['css']); ?>"
-                                    value="1" <?php checked($this->get_option($key), '1'); ?> <?php echo $this->get_custom_attribute_html($data); // WPCS: XSS ok.
+                                class="<?php echo esc_attr($data['class']); ?>" type="checkbox"
+                                name="<?php echo esc_attr($field_key); ?>" id="<?php echo esc_attr($field_key); ?>"
+                                style="<?php echo esc_attr($data['css']); ?>"
+                                value="1" <?php checked($this->get_option($key), '1'); ?> <?php echo $this->get_custom_attribute_html($data); // WPCS: XSS ok.
                             ?> />
                             <div class="slider round">
                                 <span class="on">ON</span>
                                 <span class="off">OFF</span>
                             </div>
-                        </label><br/>
+                        </label><br />
                         <?php echo $this->get_description_html($data); // WPCS: XSS ok.
                         ?>
                     </fieldset>
@@ -846,11 +845,19 @@ function split_init_gateway_class()
             try {
                 $ipn = isset($_GET['InstallmentPlanNumber']) ? wc_clean($_GET['InstallmentPlanNumber']) : false;
                 $order_info = Log::get_order_info_by_ipn($ipn);
+                // Processing an order created through the admin panel
+                if (!$order_info) {
+                    $order_by_transaction = Log::select_from_transaction_log_by_ipn($ipn);
+                    $order = wc_get_order($order_by_transaction->order_id);
+                    $order_total_amount = $order->get_total();
+                }else{
+                    $order_total_amount = $order_info->set_total;
+                }
                 $api = new api($this->settings);
 
                 $verifyData = $api->verifyPayment($ipn);
                 if ($verifyData->getResponseHeader()->getSucceeded()) {
-                    if ($verifyData->getIsPaid() && $verifyData->getOriginalAmountPaid() == $order_info->set_total) {
+                    if ($verifyData->getIsPaid() && $verifyData->getOriginalAmountPaid() == $order_total_amount) {
                         if (!Log::check_exist_order_by_ipn($ipn)) {
                             $checkout = new checkout();
                             $order_id = $checkout->create_checkout($order_info);
@@ -987,6 +994,10 @@ function split_init_gateway_class()
                 $all_fields = $_POST['fields'];
                 if (isset($all_fields['terms-field']) && $all_fields['terms-field'] && !isset($all_fields['terms'])) {
                     $errors[] = '<li>' . __('You must accept our Terms &amp; Conditions.', 'woocommerce') . '</li>';
+                }
+
+                if (!is_ssl()) {
+                    $errors[] = '<li>Please ensure your site supports SSL connection.</li>';
                 }
 
                 if (is_array($errors) && count($errors)) {
@@ -1144,6 +1155,10 @@ function split_init_gateway_class()
                             $errors[] = '<li>' . __($noticeErr, 'woocommerce') . '</li>';
                         }
                     }
+                }
+
+                if (!is_ssl()) {
+                    $errors[] = '<li>Please ensure your site supports SSL connection.</li>';
                 }
 
                 if (is_array($errors) && count($errors)) {
@@ -1313,14 +1328,15 @@ function split_init_gateway_class()
             </div>';
     }
 
-    add_action( 'woocommerce_order_status_changed', 'grab_order_old_status', 10, 4 );
-    function grab_order_old_status( $order_id, $status_from, $status_to, $order ) {
-        if ( $order->get_meta('_old_status') ) {
+    add_action('woocommerce_order_status_changed', 'grab_order_old_status', 10, 4);
+    function grab_order_old_status($order_id, $status_from, $status_to, $order)
+    {
+        if ($order->get_meta('_old_status')) {
             // Grab order status before it's updated
-            update_post_meta( $order_id, '_old_status', $status_from );
+            update_post_meta($order_id, '_old_status', $status_from);
         } else {
             // Starting status in Woocommerce (empty history)
-            update_post_meta( $order_id, '_old_status', 'processing' );
+            update_post_meta($order_id, '_old_status', 'processing');
         }
     }
 

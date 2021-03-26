@@ -125,6 +125,11 @@ class API
                 );
 
                 $initiateRequest = new InitiateInstallmentPlanRequest();
+
+                if(isset($data['ipn'])) {
+                    $initiateRequest->setInstallmentPlanNumber($data['ipn']);
+                }
+
                 $planData = new PlanData();
 
                 $planData->setNumberOfInstallments($data['numberOfInstallments']);
