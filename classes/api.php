@@ -133,7 +133,7 @@ class API
                 $planData = new PlanData();
 
                 $planData->setNumberOfInstallments($data['numberOfInstallments']);
-                $planData->setAmount(new MoneyWithCurrencyCode(["value" => $data['amount'], "currency_code" => $data['currency_code']]));
+                $planData->setAmount(new MoneyWithCurrencyCode(["value" => number_format($data['amount'], 2, '.', ''), "currency_code" => $data['currency_code']]));
                 $planData->setAutoCapture((bool)$this->auto_capture);
                 $planData->setAttempt3DSecure((bool)$this->secure_3d);
 
@@ -332,7 +332,7 @@ class API
         $request = new RefundPlanRequest();
 
         $request->setInstallmentPlanNumber($spilitit_info->installment_plan_number);
-        $request->setAmount(new MoneyWithCurrencyCode(["value" => $amount, "currency_code" => $currency_code]));
+        $request->setAmount(new MoneyWithCurrencyCode(["value" => number_format($amount, 2, '.', ''), "currency_code" => $currency_code]));
         $request->setRefundStrategy('FutureInstallmentsFirst');
 
         $response = $apiInstance->installmentPlanRefund($request);

@@ -11,13 +11,11 @@
     <div id="splitit-error-box"></div>
     <div id="splitit-terms-conditions"></div>
 </div>
-<script>
+<script type="application/javascript">
     var overlay = '.nv-content-wrap';
     var a = '.woocommerce-checkout-payment, .woocommerce-checkout-review-order-table, #order_review, .woocommerce, .nv-content-wrap, .entry-content, #payment, form, .blockUI, .entry-content, form#order_review, .woocommerce-order-pay, .nv-content-wrap';
-    var flexFieldsInstance;
     var checkoutHasErrors = false;
     localStorage.setItem('flex_fields_success', 'false');
-    localStorage.setItem('ipn', '');
     (function ($) {
         "use strict";
         $(document).ready(function ($) {
@@ -30,108 +28,113 @@
                     opacity: .6
                 }
             });
-            flexFieldsInstance = Splitit.FlexFields.setup({
-                debug: "<debug>",
-                useSandboxApi: "<useSandboxApi>",
-                culture: "<culture>",
-                container: "#splitit-card-data",
-                fields: {
-                    cardholderName: {
-                        selector: '#splitit-card-holder-full-name'
-                    },
-                    number: {
-                        selector: "#splitit-card-number"
-                    },
-                    cvv: {
-                        selector: "#splitit-cvv"
-                    },
-                    expirationDate: {
-                        selector: "#splitit-expiration-date"
-                    }
-                },
-                installmentPicker: {
-                    selector: "#splitit-installment-picker"
-                },
-                termsConditions: {
-                    selector: "#splitit-terms-conditions"
-                },
-                errorBox: {
-                    selector: "#splitit-error-box"
-                },
-                loader: ''
-            }).ready(function () {
-                $.ajax({
-                    url: ajaxurl,
-                    method: 'POST',
-                    dataType: 'json',
-                    data: {
-                        action: 'flex_field_initiate_method',
-                        order_id: "<order_id>",
-                        numberOfInstallments: '',
-                    },
-                    success: function (data) {
-                        console.log(data);
-                        if (typeof data == 'undefined' || typeof data.publicToken == 'undefined') {
-                            if (typeof reportExternalError != 'undefined') {
-                                console.log('Public token is not defined');
-                            } else {
-                                console.log('Public Token is not defined');
-                            }
 
-                            if ($('#payment_method_splitit:checked').val() == "splitit") {
-                                jQuery('.woocommerce-error').remove();
 
-                                if (jQuery('form[name="checkout"]').length) {
-                                    jQuery('form[name="checkout"]').prepend('<ul class="woocommerce-error">' + data.error.message + '</ul>');
-                                } else {
-                                    jQuery('#order_review').prepend('<ul class="woocommerce-error">' + data.error.message + '</ul>');
-                                }
-                            }
+            if(flexFieldsInstance === undefined) {
 
-                            if(!$('#custom_splitit_error').length) {
-                                $('.payment_box.payment_method_splitit').prepend('<p id="custom_splitit_error" style="color:red;">' + data.error.message + '</p>');
-                            }
-                            $(a).unblock();//Stop spinner
-                            jQuery(overlay).unblock();//Stop spinner
-                            removeLoader();
-                        } else {
-                            flexFieldsInstance.setPublicToken(data.publicToken);
-                            localStorage.setItem('ipn', data.installmentPlan.InstallmentPlanNumber);
-                            flexFieldsInstance.show();
-                            $(a).unblock();//Stop spinner
-                            jQuery(overlay).unblock();//Stop spinner
+                flexFieldsInstance = Splitit.FlexFields.setup({
+                    debug: "<debug>",
+                    useSandboxApi: "<useSandboxApi>",
+                    culture: "<culture>",
+                    container: "#splitit-card-data",
+                    fields: {
+                        cardholderName: {
+                            selector: '#splitit-card-holder-full-name'
+                        },
+                        number: {
+                            selector: "#splitit-card-number"
+                        },
+                        cvv: {
+                            selector: "#splitit-cvv"
+                        },
+                        expirationDate: {
+                            selector: "#splitit-expiration-date"
                         }
                     },
-                    error: function (error) {
-                        $(a).unblock();
-                        jQuery(overlay).unblock();//Stop spinner
-                        removeLoader();
-                    }
+                    installmentPicker: {
+                        selector: "#splitit-installment-picker"
+                    },
+                    termsConditions: {
+                        selector: "#splitit-terms-conditions"
+                    },
+                    errorBox: {
+                        selector: "#splitit-error-box"
+                    },
+                    loader: ''
+                }).ready(function () {
+                    $.ajax({
+                        url: ajaxurl,
+                        method: 'POST',
+                        dataType: 'json',
+                        data: {
+                            action: 'flex_field_initiate_method',
+                            order_id: "<order_id>",
+                            numberOfInstallments: '',
+                        },
+                        success: function (data) {
+
+                            if (typeof data == 'undefined' || typeof data.publicToken == 'undefined') {
+                                if (typeof reportExternalError != 'undefined') {
+                                    console.log('Public token is not defined');
+                                } else {
+                                    console.log('Public Token is not defined');
+                                }
+
+                                if ($('#payment_method_splitit:checked').val() == "splitit") {
+                                    jQuery('.woocommerce-error').remove();
+
+                                    if (jQuery('form[name="checkout"]').length) {
+                                        jQuery('form[name="checkout"]').prepend('<ul class="woocommerce-error">' + data.error.message + '</ul>');
+                                    } else {
+                                        jQuery('#order_review').prepend('<ul class="woocommerce-error">' + data.error.message + '</ul>');
+                                    }
+                                }
+
+                                if (!$('#custom_splitit_error').length) {
+                                    $('.payment_box.payment_method_splitit').prepend('<p id="custom_splitit_error" style="color:red;">' + data.error.message + '</p>');
+                                }
+                                $(a).unblock();//Stop spinner
+                                jQuery(overlay).unblock();//Stop spinner
+                                removeLoader();
+                            } else {
+                                flexFieldsInstance.setPublicToken(data.publicToken);
+                                localStorage.setItem('ipn', data.installmentPlan.InstallmentPlanNumber);
+                                flexFieldsInstance.show();
+                                $(a).unblock();//Stop spinner
+                                jQuery(overlay).unblock();//Stop spinner
+                            }
+                        },
+                        error: function (error) {
+                            $(a).unblock();
+                            jQuery(overlay).unblock();//Stop spinner
+                            removeLoader();
+                        }
+                    });
+                }).onSuccess(function (result) {
+                    var instNum = flexFieldsInstance.getState().planNumber;
+                    var numOfInstallments = flexFieldsInstance.getState().selectedNumInstallments;
+
+                    //add data to hidden input
+                    //jQuery('input[name="flex_field_ipn"]').val(instNum);
+                    //jQuery('input[name="flex_field_num_of_inst"]').val(numOfInstallments);
+                    jQuery('html').find('input[name="flex_field_ipn"]').val(instNum);
+                    jQuery('html').find('input[name="flex_field_num_of_inst"]').val(numOfInstallments);
+
+                    //Set item in local storage for inform about flex fields success
+                    localStorage.setItem('flex_fields_success', 'true');
+
+                    //Submit checkout
+                    jQuery('form[name="checkout"]').submit();
+
+                    //Or submit pay order
+                    jQuery("form#order_review").submit();
+                }).onError(function (result) {
+                    localStorage.setItem('flex_fields_success', 'false');
+                    $("#splitit-btn-pay").removeAttr('disabled');
+                    jQuery(overlay).unblock();//Stop spinner
+                    removeLoader();
                 });
-            }).onSuccess(function (result) {
-                var instNum = flexFieldsInstance.getSessionParams().planNumber;
-                var numOfInstallments = flexFieldsInstance.getNumInstallments();
-
-                //add data to hidden input
-                //jQuery('input[name="flex_field_ipn"]').val(instNum);
-                //jQuery('input[name="flex_field_num_of_inst"]').val(numOfInstallments);
-                jQuery('html').find('input[name="flex_field_ipn"]').val(instNum);
-                jQuery('html').find('input[name="flex_field_num_of_inst"]').val(numOfInstallments);
-
-                //Set item in local storage for inform about flex fields success
-                localStorage.setItem('flex_fields_success', 'true');
-
-                //Submit checkout
-                jQuery('form[name="checkout"]').submit();
-
-                //Or submit pay order
-                jQuery("form#order_review").submit();
-            }).onError(function (result) {
-                localStorage.setItem('flex_fields_success', 'false');
-                $("#splitit-btn-pay").removeAttr('disabled');
-                jQuery(overlay).unblock();//Stop spinner
-                removeLoader();
-            });
+            }
         });
     })(jQuery);
 
@@ -139,7 +142,7 @@
         //Check that payment method is splitit
         if (jQuery('input[name="payment_method"]:checked').val() == "splitit") {
             //Check if flex fields has errors
-            if (flexFieldsInstance.hasErrors()) {
+            if (!flexFieldsInstance.getState().validationStatus.isValid) {
                 jQuery(overlay).unblock();//Stop spinner
                 return false;
             }
@@ -153,6 +156,23 @@
 
             return false;
         }
+    });
+
+    jQuery(".woocommerce-checkout-review-order-table :input").change(function() {
+        jQuery(a).block({
+            message: null,
+            overlayCSS: {
+                background: "#fff",
+                opacity: .6
+            }
+        });
+
+        var val = jQuery( this ).val();
+        if (val) {
+            isRefreshPage = true;
+        }
+
+        jQuery('body').trigger( 'update_checkout' );
     });
 
     var isRefreshPage = false;
@@ -174,7 +194,7 @@
 
     jQuery('body').on('updated_checkout', function(){
         if (isRefreshPage) {
-            var planNumber = flexFieldsInstance.getSessionParams().planNumber;
+            var planNumber = flexFieldsInstance.getState().planNumber;
 
             jQuery.ajax({
                 url: ajaxurl,
@@ -187,7 +207,26 @@
                 method: "POST",
                 dataType: 'json',
                 success: function (data) {
-                    flexFieldsInstance.synchronizePlan();
+                    jQuery('.woocommerce-error').remove();
+                    jQuery('#custom_splitit_error').remove();
+                        if(typeof data.error != 'undefined') {
+                            flexFieldsInstance.hide();
+                            if (!jQuery('#custom_splitit_error').length) {
+                                jQuery('.payment_box.payment_method_splitit').prepend('<p id="custom_splitit_error" style="color:red;">' + data.error.message + '</p>');
+                            }
+
+                        } else {
+
+                            if(jQuery.type( planNumber ) === "null") {
+                                jQuery('#custom_splitit_error').remove();
+                                flexFieldsInstance.setPublicToken(data.publicToken);
+                                localStorage.setItem('ipn', data.installmentPlan.InstallmentPlanNumber);
+                                flexFieldsInstance.show();
+                            }
+                        }
+
+                        flexFieldsInstance.synchronizePlan();
+
                     jQuery(a).unblock();//Stop spinner
                     jQuery(overlay).unblock();//Stop spinner
                 }
@@ -302,7 +341,7 @@
                 e.preventDefault();
                 jQuery(this).remove('#flex_field_hidden_checkout_field');
                 jQuery(this).append('<div id="flex_field_hidden_checkout_field"><input type="hidden" class="input-hidden" name="flex_field_ipn" id="flex_field_ipn" value=""> <input type="hidden" class="input-hidden" name="flex_field_num_of_inst" id="flex_field_num_of_inst" value=""> </div>');
-                if (flexFieldsInstance.hasErrors()) {
+                if (!flexFieldsInstance.getState().validationStatus.isValid) {
                     localStorage.setItem('order_pay', 'false');
                     removeLoader();
                 } else {

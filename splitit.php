@@ -199,6 +199,10 @@ function split_init_gateway_class()
          */
         public function payment_fields()
         {
+            if ( !is_ajax() ) {
+                return;
+            }
+
             $sandbox = true;
 
             if ($this->splitit_environment == 'sandbox') {
@@ -226,11 +230,21 @@ function split_init_gateway_class()
             $tmp2 = str_replace("<debug>", $sandbox, $tmp);
             $result = str_replace("<culture>", str_replace("_", "-", get_locale()), $tmp2);
 
+
             echo $result;
+
 
             do_action('woocommerce_splitit_form_end', $this->id);
 
             echo '<div class="clear"></div></fieldset>';
+
+            $this->payment_scripts();
+        }
+
+
+        public function payment_scripts() {
+            wp_register_script( 'checkout_js', plugins_url( 'assets/js/checkout.js', __FILE__ ) );
+            wp_enqueue_script( 'checkout_js' );
         }
 
         /**
@@ -785,7 +799,7 @@ function split_init_gateway_class()
             {
                 wp_register_style('flex_field_css', 'https://flex-fields.sandbox.splitit.com/css/splitit.flex-fields.min.css');
                 wp_enqueue_style('flex_field_css');
-                wp_register_script('flex_field_js', 'https://flex-fields.sandbox.splitit.com/js/dist/splitit.flex-fields.sdk.js', null, null, true);
+                wp_register_script('flex_field_js', 'https://flexfields.sandbox.splitit.com/v2.0/splitit.flex-fields.sdk.js', null, null, true);
                 wp_enqueue_script('flex_field_js');
             }
 
@@ -793,7 +807,7 @@ function split_init_gateway_class()
             {
                 wp_register_style('flex_field_css', 'https://flex-fields.production.splitit.com/css/splitit.flex-fields.min.css');
                 wp_enqueue_style('flex_field_css');
-                wp_register_script('flex_field_js', 'https://flex-fields.production.splitit.com/js/dist/splitit.flex-fields.sdk.js', null, null, true);
+                wp_register_script('flex_field_js', 'https://flexfields.production.splitit.com/v2.0/splitit.flex-fields.sdk.js', null, null, true);
                 wp_enqueue_script('flex_field_js');
             }
 
@@ -1337,6 +1351,16 @@ function split_init_gateway_class()
         } else {
             // Starting status in Woocommerce (empty history)
             update_post_meta($order_id, '_old_status', 'processing');
+        }
+    }
+
+
+    add_action('wp_head','custom_checkout_script');
+
+    function custom_checkout_script(){
+        if(is_checkout()==true){
+
+            echo '<script>var flexFieldsInstance; localStorage.removeItem("ipn"); </script>';
         }
     }
 

@@ -27,7 +27,7 @@ trait UpstreamMessagingTrait
                 })(window, document, 'script', '//upstream.production.splitit.com/v1/dist/upstream-messaging.js?v=' + (Math.ceil(new Date().getTime() / 100000)), 'splitit');
                 splitit('init', {
                     apiKey: '<?= $this->settings['splitit_api_key']?>',
-                    lang: '<?= get_locale(); ?>',
+                    lang: '<?= str_replace("_", "-", get_locale()); ?>',
                     currency: '<?= get_woocommerce_currency(); ?>',
                     currencySymbol: '<?= get_woocommerce_currency_symbol(get_woocommerce_currency()); ?>',
                     debug: false
@@ -142,7 +142,8 @@ trait UpstreamMessagingTrait
     {
         if ($this->enabled == "yes") {
             if (in_array('product', $this->splitit_upstream_messaging_selection) && is_product()) {
-                $price = wc_get_product()->get_price();
+                //$price = wc_get_product()->get_price();
+                $price = wc_get_price_to_display(wc_get_product(), array( 'array' => wc_get_product()->get_price()));
                 $installments = $this->get_installment_by_price($price);
                 if (isset($installments)) {
                     ?>
