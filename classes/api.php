@@ -118,11 +118,16 @@ class API
             $session_id = $this->login();
             $environment = $this->set_api_key();
 
+            $environment->setTouchPoint(['Code' => 'WooCommercePlugin', 'Version' => 'v3.0']);
+
+
             if (isset($session_id) && !isset($session_id['error'])) {
                 $installmentPlanApi = new InstallmentPlanApi(
                     $environment,
                     $session_id
                 );
+
+                $installmentPlanApi->setCulture(str_replace("_", "-", get_locale()));
 
                 $initiateRequest = new InitiateInstallmentPlanRequest();
 

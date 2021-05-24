@@ -132,7 +132,7 @@ function split_init_gateway_class()
             $this->method_description = 'Plugin available to WooCommerce users that would allow adding Splitit as a payment method at checkout.'; // will be displayed on the options page
 
             $this->pay_button_id = 'splitit-btn-pay';
-            $this->order_button_text = 'Proceed to Splitit';
+            $this->order_button_text = 'Place order';
 
             // gateways can support subscriptions, refunds, saved payment methods
             $this->supports = [

@@ -15,6 +15,7 @@
     var overlay = '.nv-content-wrap';
     var a = '.woocommerce-checkout-payment, .woocommerce-checkout-review-order-table, #order_review, .woocommerce, .nv-content-wrap, .entry-content, #payment, form, .blockUI, .entry-content, form#order_review, .woocommerce-order-pay, .nv-content-wrap';
     var checkoutHasErrors = false;
+    var order_review_overlay = '.woocommerce-checkout-payment, .woocommerce-checkout-review-order-table, #order_review';
     localStorage.setItem('flex_fields_success', 'false');
     (function ($) {
         "use strict";
@@ -132,6 +133,7 @@
                     localStorage.setItem('flex_fields_success', 'false');
                     $("#splitit-btn-pay").removeAttr('disabled');
                     jQuery(overlay).unblock();//Stop spinner
+                    jQuery(order_review_overlay).unblock();//Stop spinner
                     removeLoader();
                 });
             }
@@ -144,6 +146,7 @@
             //Check if flex fields has errors
             if (!flexFieldsInstance.getState().validationStatus.isValid) {
                 jQuery(overlay).unblock();//Stop spinner
+                jQuery(order_review_overlay).unblock();//Stop spinner
                 return false;
             }
 
@@ -252,6 +255,14 @@
             }
         });
 
+        jQuery(order_review_overlay).block({
+            message: null,
+            overlayCSS: {
+                background: "#fff",
+                opacity: .6
+            }
+        });
+
         flexFieldsInstance.updateDetails({
             billingAddress: {
                 AddressLine: jQuery('input[name="billing_address_1"]').val(),
@@ -311,6 +322,7 @@
 
                         jQuery('#place_order').attr('disabled', false);
                         jQuery(overlay).unblock();//Stop spinner
+                        jQuery(order_review_overlay).unblock();//Stop spinner
                     }
                 },
                 error: function (error) {
@@ -318,6 +330,7 @@
                         scrollTop: (jQuery('form.woocommerce-checkout').offset().top - 100)
                     }, 1000);
                     jQuery(overlay).unblock();//Stop spinner
+                    jQuery(order_review_overlay).unblock();//Stop spinner
                 }
             });
 
@@ -343,6 +356,7 @@
                 jQuery(this).append('<div id="flex_field_hidden_checkout_field"><input type="hidden" class="input-hidden" name="flex_field_ipn" id="flex_field_ipn" value=""> <input type="hidden" class="input-hidden" name="flex_field_num_of_inst" id="flex_field_num_of_inst" value=""> </div>');
                 if (!flexFieldsInstance.getState().validationStatus.isValid) {
                     localStorage.setItem('order_pay', 'false');
+                    jQuery(order_review_overlay).unblock();//Stop spinner
                     removeLoader();
                 } else {
                     localStorage.setItem('order_pay', 'true');
@@ -367,7 +381,6 @@
                         if (data.result == 'success') {
                             jQuery('.woocommerce-error').remove();
 
-                            removeLoader();
 
                             var order_pay = localStorage.getItem('order_pay');
 
@@ -375,6 +388,8 @@
                                 flexFieldsInstance.checkout();
                             } else {
                                 localStorage.setItem('order_pay', 'false');
+                                jQuery(order_review_overlay).unblock();//Stop spinner
+                                removeLoader();
                             }
                         } else {
 
@@ -397,6 +412,8 @@
 
                             jQuery('#place_order').attr('disabled', false);
 
+                            jQuery(order_review_overlay).unblock();//Stop spinner
+
                             removeLoader();
                         }
                     },
@@ -404,6 +421,7 @@
                         jQuery('html, body').animate({
                             scrollTop: (jQuery('form#order_review').offset().top - 100)
                         }, 1000);
+                        jQuery(order_review_overlay).unblock();//Stop spinner
                         removeLoader();
                     }
                 });
