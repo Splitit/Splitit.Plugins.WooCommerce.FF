@@ -260,6 +260,15 @@ class API
             $updateRequest->setPlanData($planData);
 
             $apiInstance->installmentPlanUpdate($updateRequest);
+
+            $message = 'Update was successful';
+            $data = [
+                'user_id' => get_current_user_id(),
+                'method' => 'update() API',
+                'message' => $message
+            ];
+            Log::save_log_info($data, $message, 'info');
+
         } catch (Exception $e) {
             $message = 'Error. File - ' . $e->getFile() . ', message - ' . $e->getMessage() . ', row' . $e->getLine();
             $data = [
@@ -498,7 +507,7 @@ class API
                 'method' => 'verifyPayment() API',
                 'message' => $message
             ];
-            Log::save_log_info($data, $message);
+            Log::save_log_info($data, $message, 'info');
 
             return $response;
         } else {

@@ -1323,7 +1323,7 @@ function split_init_gateway_class()
     function custom_order_button_html($button)
     {
         // HERE you make changes (Replacing the code of the button):
-        $button = '<button type="submit" class="button alt" name="woocommerce_checkout_place_order" id="place_order" onclick="performPayment()" value="Place order" data-value="Place order"></button>';
+        $button = '<button type="submit" class="button alt" name="woocommerce_checkout_place_order" id="place_order" onclick="performPayment(this)" value="Place order" data-value="Place order"></button>';
 
         // Return the modified/filtered content
         return $button;

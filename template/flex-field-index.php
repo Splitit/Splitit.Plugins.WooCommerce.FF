@@ -97,18 +97,21 @@
                                 $(a).unblock();//Stop spinner
                                 jQuery(overlay).unblock();//Stop spinner
                                 removeLoader();
+                                jQuery("#place_order").removeAttr('disabled');
                             } else {
                                 flexFieldsInstance.setPublicToken(data.publicToken);
                                 localStorage.setItem('ipn', data.installmentPlan.InstallmentPlanNumber);
                                 flexFieldsInstance.show();
                                 $(a).unblock();//Stop spinner
                                 jQuery(overlay).unblock();//Stop spinner
+                                jQuery("#place_order").removeAttr('disabled');
                             }
                         },
                         error: function (error) {
                             $(a).unblock();
                             jQuery(overlay).unblock();//Stop spinner
                             removeLoader();
+                            jQuery("#place_order").removeAttr('disabled');
                         }
                     });
                 }).onSuccess(function (result) {
@@ -131,7 +134,7 @@
                     jQuery("form#order_review").submit();
                 }).onError(function (result) {
                     localStorage.setItem('flex_fields_success', 'false');
-                    $("#splitit-btn-pay").removeAttr('disabled');
+                    jQuery("#place_order").removeAttr('disabled');
                     jQuery(overlay).unblock();//Stop spinner
                     jQuery(order_review_overlay).unblock();//Stop spinner
                     removeLoader();
@@ -147,6 +150,7 @@
             if (!flexFieldsInstance.getState().validationStatus.isValid) {
                 jQuery(overlay).unblock();//Stop spinner
                 jQuery(order_review_overlay).unblock();//Stop spinner
+                jQuery("#place_order").removeAttr('disabled');
                 return false;
             }
 
@@ -232,6 +236,7 @@
 
                     jQuery(a).unblock();//Stop spinner
                     jQuery(overlay).unblock();//Stop spinner
+                    jQuery("#place_order").removeAttr('disabled');
                 }
             });
 
@@ -246,6 +251,8 @@
         if (jQuery('input[name="payment_method"]:checked').val() != "splitit") {
             return;
         }
+
+        jQuery(sender).attr('disabled', true);
 
         jQuery(overlay).block({
             message: null,
@@ -320,10 +327,11 @@
                             scrollTop: (jQuery('form.woocommerce-checkout').offset().top - 100)
                         }, 1000);
 
-                        jQuery('#place_order').attr('disabled', false);
-                        jQuery(overlay).unblock();//Stop spinner
-                        jQuery(order_review_overlay).unblock();//Stop spinner
                     }
+
+                    jQuery('#place_order').attr('disabled', false);
+                    jQuery(overlay).unblock();//Stop spinner
+                    jQuery(order_review_overlay).unblock();//Stop spinner
                 },
                 error: function (error) {
                     jQuery('html, body').animate({
@@ -331,6 +339,7 @@
                     }, 1000);
                     jQuery(overlay).unblock();//Stop spinner
                     jQuery(order_review_overlay).unblock();//Stop spinner
+                    jQuery("#place_order").removeAttr('disabled');
                 }
             });
 
@@ -410,18 +419,19 @@
                                 scrollTop: (jQuery('form#order_review').offset().top - 100)
                             }, 1000);
 
-                            jQuery('#place_order').attr('disabled', false);
-
-                            jQuery(order_review_overlay).unblock();//Stop spinner
-
-                            removeLoader();
                         }
+
+                        jQuery('#place_order').attr('disabled', false);
+                        jQuery(overlay).unblock();//Stop spinner
+                        jQuery(order_review_overlay).unblock();//Stop spinner
+                        removeLoader();
                     },
                     error: function (error) {
                         jQuery('html, body').animate({
                             scrollTop: (jQuery('form#order_review').offset().top - 100)
                         }, 1000);
                         jQuery(order_review_overlay).unblock();//Stop spinner
+                        jQuery("#place_order").removeAttr('disabled');
                         removeLoader();
                     }
                 });
