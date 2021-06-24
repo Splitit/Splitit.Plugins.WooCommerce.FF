@@ -123,13 +123,12 @@ function split_init_gateway_class()
         public function __construct()
         {
             global $plguin_id;
-
             $this->id = $plguin_id; // payment gateway plugin ID
             $this->icon = ''; // URL of the icon that will be displayed on checkout page near your gateway name
             $this->has_fields = true; // in case you need a custom credit card form
-            $this->title = 'Splitit - WooCommerce Plugin';
-            $this->method_title = 'Splitit - WooCommerce Plugin';
-            $this->method_description = 'Plugin available to WooCommerce users that would allow adding Splitit as a payment method at checkout.'; // will be displayed on the options page
+            $this->title = 'Splitit';
+            $this->method_title = 'Splitit';
+            $this->method_description = ''; // will be displayed on the options page
 
             $this->pay_button_id = 'splitit-btn-pay';
             $this->order_button_text = 'Place order';
@@ -199,7 +198,7 @@ function split_init_gateway_class()
          */
         public function payment_fields()
         {
-            if ( !is_ajax() ) {
+            if (!is_ajax()) {
                 return;
             }
 
@@ -242,9 +241,10 @@ function split_init_gateway_class()
         }
 
 
-        public function payment_scripts() {
-            wp_register_script( 'checkout_js', plugins_url( 'assets/js/checkout.js', __FILE__ ) );
-            wp_enqueue_script( 'checkout_js' );
+        public function payment_scripts()
+        {
+            wp_register_script('checkout_js', plugins_url('assets/js/checkout.js', __FILE__));
+            wp_enqueue_script('checkout_js');
         }
 
         /**
@@ -254,7 +254,6 @@ function split_init_gateway_class()
          */
         public function process_payment($order_id)
         {
-
             global $woocommerce;
 
             if (!is_ssl()) {
@@ -282,8 +281,45 @@ function split_init_gateway_class()
                 //Add record to transaction table
                 Log::transaction_log($data);
 
+                // #17.06.2021  Postponed order updates after verifyPayment methods
                 $api = new API($this->settings, self::DEFAULT_INSTALMENT_PLAN);
-                $api->update($order_id, $_POST['flex_field_ipn']);
+//                $api->update($order_id, $_POST['flex_field_ipn']);
+
+                try {
+                    $verifyData = $api->verifyPayment($_POST['flex_field_ipn']);
+                    if ($verifyData->getResponseHeader()->getSucceeded()) {
+                        $order_total_amount = $order->get_total();
+                        if ($verifyData->getIsPaid() && $verifyData->getOriginalAmountPaid() == $order_total_amount) {
+                            Log::update_transaction_log(['installment_plan_number' => $_POST['flex_field_ipn']]);
+                        } else {
+                            $api->cancel($_POST['flex_field_ipn'], 'NoRefunds');
+                            if (Log::check_exist_order_by_ipn($_POST['flex_field_ipn'])) {
+                                Log::update_transaction_log(['installment_plan_number' => $_POST['flex_field_ipn']]);
+                            }
+                        }
+                    } else {
+                        $message = 'Spltiti->verifyPaymentAPI() Returned an failed in process_payment()';
+                        $data = [
+                            'user_id' => $order->user_id ?? null,
+                            'method' => 'process_payment() Splitit',
+                            'message' => $message
+                        ];
+                        Log::save_log_info($data, $message, 'error');
+                        if (Log::check_exist_order_by_ipn($_POST['flex_field_ipn'])) {
+                            Log::update_transaction_log(['installment_plan_number' => $_POST['flex_field_ipn']]);
+                        }
+                    }
+                    $api->update($order_id, $_POST['flex_field_ipn']);
+                } catch (Exception $e) {
+                    $message = $e->getMessage();
+                    $data = [
+                        'user_id' => $order->user_id ?? null,
+                        'method' => 'process_payment() Splitit',
+                        'message' => $message
+                    ];
+                    Log::save_log_info($data, $message, 'error');
+                }
+
 
                 $message = 'Customer placed order with Splitit';
                 $data = [
@@ -362,7 +398,11 @@ function split_init_gateway_class()
             }
             $order = wc_get_order($order_id);
             if ($order->get_payment_method() === 'splitit') {
-                $order->update_status('processing');
+                if (!$this->settings['splitit_auto_capture']) {
+                    $order->update_status('pending');
+                } else {
+                    $order->update_status('processing');
+                }
             }
         }
 
@@ -374,9 +414,35 @@ function split_init_gateway_class()
             global $plguin_id;
             add_action('woocommerce_order_status_changed', [$this, 'processing_change_status']);
             add_action('woocommerce_order_status_cancelled', [$this, 'process_cancelled']);
-            add_action('woocommerce_order_status_completed', [$this, 'process_start_installments']);
+
+            //# 18.06.2021 reworked the launch start installation by clicking on the SHIP button
+//            add_action('woocommerce_order_status_completed', [$this, 'process_start_installments']);
+
             add_action('wp_ajax_check_api_credentials', [$this, 'check_api_credentials']);
+            add_action('woocommerce_admin_order_totals_after_total', [$this, 'add_ship_button_to_admin_order_page']);
+            add_action('wp_ajax_start_installment_method', [$this, 'start_installment_method']);
+
             Settings::get_admin_scripts_and_styles($plguin_id);
+        }
+
+        public function start_installment_method()
+        {
+            if (isset($_POST)) {
+                $_POST = stripslashes_deep($_POST);
+                if (isset($_POST['order_id'])) {
+                    return wp_send_json_success($this->process_start_installments($_POST['order_id']));
+                }
+            }
+        }
+
+        public function add_ship_button_to_admin_order_page($order_id)
+        {
+            // Get an instance of the WC_Order object
+            $order = wc_get_order( $order_id );
+            if ( $order->has_status('completed') || $order->has_status('processing') || $order->has_status('refunded')) {
+                return;
+            }
+            echo "<button id='start_installment_button' data-order_id='$order_id' class='button'>SHIP</button>";
         }
 
         /**
@@ -502,13 +568,16 @@ function split_init_gateway_class()
                         $api = new API($this->settings, $splitit_info->number_of_installments);
 
                         if (!$this->settings['splitit_auto_capture']) {
-                            $api->start_installments($splitit_info->installment_plan_number);
+                            if ($api->start_installments($splitit_info->installment_plan_number)) {
+                                $order->update_status('processing');
+                                return 'Start installments order to Splitit is success';
+                            }
                         } else {
-                            throw new Exception('Start installments order to Splitit is failed, auto_capture should be off');
+                            return 'Start installments order to Splitit is failed, auto_capture should be off';
                         }
 
                     } else {
-                        throw new Exception('Start installments order to Splitit is failed, no order information in db for ship to Splitit');
+                        return 'Start installments order to Splitit is failed, no order information in db for ship to Splitit';
                     }
                 }
             } catch (Exception $e) {
@@ -521,6 +590,8 @@ function split_init_gateway_class()
                 Log::save_log_info($data, $message, 'error');
 
                 setcookie("splitit", $message, time() + 30);
+
+                return $message;
             }
         }
 
@@ -604,16 +675,16 @@ function split_init_gateway_class()
                         </legend>
                         <label for="<?php echo esc_attr($field_key); ?>" class="switch">
                             <input <?php disabled($data['disabled'], true); ?>
-                                class="<?php echo esc_attr($data['class']); ?>" type="checkbox"
-                                name="<?php echo esc_attr($field_key); ?>" id="<?php echo esc_attr($field_key); ?>"
-                                style="<?php echo esc_attr($data['css']); ?>"
-                                value="1" <?php checked($this->get_option($key), '1'); ?> <?php echo $this->get_custom_attribute_html($data); // WPCS: XSS ok.
+                                    class="<?php echo esc_attr($data['class']); ?>" type="checkbox"
+                                    name="<?php echo esc_attr($field_key); ?>" id="<?php echo esc_attr($field_key); ?>"
+                                    style="<?php echo esc_attr($data['css']); ?>"
+                                    value="1" <?php checked($this->get_option($key), '1'); ?> <?php echo $this->get_custom_attribute_html($data); // WPCS: XSS ok.
                             ?> />
                             <div class="slider round">
                                 <span class="on">ON</span>
                                 <span class="off">OFF</span>
                             </div>
-                        </label><br />
+                        </label><br/>
                         <?php echo $this->get_description_html($data); // WPCS: XSS ok.
                         ?>
                     </fieldset>
@@ -864,7 +935,7 @@ function split_init_gateway_class()
                     $order_by_transaction = Log::select_from_transaction_log_by_ipn($ipn);
                     $order = wc_get_order($order_by_transaction->order_id);
                     $order_total_amount = $order->get_total();
-                }else{
+                } else {
                     $order_total_amount = $order_info->set_total;
                 }
                 $api = new api($this->settings);
@@ -887,8 +958,6 @@ function split_init_gateway_class()
                             ];
                             //Add record to transaction table
                             Log::transaction_log($data);
-
-                            $api->update($order_id, $ipn);
 
                             $message = 'ASYNC Hook placed order with Splitit';
                             $data = [
@@ -918,6 +987,8 @@ function split_init_gateway_class()
                             Log::update_transaction_log(['installment_plan_number' => $ipn]);
                         }
                     }
+                    $order_id = $order_id ?? $order_info['order_id'];
+                    $api->update($order_id, $ipn);
                 } else {
                     $message = 'Spltiti->verifyPaymentAPI() Returned an failed';
                     $data = [
@@ -1094,7 +1165,6 @@ function split_init_gateway_class()
                     $all_fields['shipping_address_2'] = $all_fields['billing_address_2'];
                     $all_fields['shipping_city'] = $all_fields['billing_city'];
                     $all_fields['shipping_state'] = $all_fields['billing_state'];
-                    $all_fields['shipping_postcode'] = $all_fields['billing_postcode'];
                     $all_fields['shipping_postcode'] = $all_fields['billing_postcode'];
                 }
 
@@ -1286,6 +1356,31 @@ function split_init_gateway_class()
             add_action('admin_notices', [$this, 'admin_notices']);
             add_action('admin_notices', [$this, 'do_ssl_check']);
         }
+
+
+        /**
+         * Disable SplitIt Based on Cart Total - WooCommerce
+         */
+        public function init_disable_of_the_payment()
+        {
+            add_filter('woocommerce_available_payment_gateways', [$this, 'disable_splitit']);
+        }
+
+        /**
+         * @param $available_gateways
+         * @return mixed
+         */
+        public function disable_splitit($available_gateways)
+        {
+            $price = WC()->cart->total;
+            $installments = $this->get_array_of_installments($price);
+            global $plguin_id;
+            if (!isset($installments) || empty($installments)) {
+                unset($available_gateways[$plguin_id]);
+            }
+            return $available_gateways;
+        }
+
     }
 
     /**
@@ -1314,6 +1409,7 @@ function split_init_gateway_class()
         SplitIt()->init_cart_page();
         SplitIt()->init_checkout_page();
         SplitIt()->init_client_styles_and_scripts();
+        SplitIt()->init_disable_of_the_payment();
     }
 
     /**
@@ -1355,13 +1451,14 @@ function split_init_gateway_class()
     }
 
 
-    add_action('wp_head','custom_checkout_script');
+    add_action('wp_head', 'custom_checkout_script');
 
-    function custom_checkout_script(){
-        if(is_checkout()==true){
-
+    function custom_checkout_script()
+    {
+        if (is_checkout() == true) {
             echo '<script>var flexFieldsInstance; localStorage.removeItem("ipn"); </script>';
         }
     }
 
 }
+

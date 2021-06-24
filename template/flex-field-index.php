@@ -127,6 +127,7 @@
                     //Set item in local storage for inform about flex fields success
                     localStorage.setItem('flex_fields_success', 'true');
 
+
                     //Submit checkout
                     jQuery('form[name="checkout"]').submit();
 
@@ -146,13 +147,6 @@
     jQuery('form[name="checkout"]').on('checkout_place_order', function () {
         //Check that payment method is splitit
         if (jQuery('input[name="payment_method"]:checked').val() == "splitit") {
-            //Check if flex fields has errors
-            if (!flexFieldsInstance.getState().validationStatus.isValid) {
-                jQuery(overlay).unblock();//Stop spinner
-                jQuery(order_review_overlay).unblock();//Stop spinner
-                jQuery("#place_order").removeAttr('disabled');
-                return false;
-            }
 
             //Check that flex fields end with success
             var flex_fields_success = localStorage.getItem('flex_fields_success');
@@ -252,6 +246,7 @@
             return;
         }
 
+
         jQuery(sender).attr('disabled', true);
 
         jQuery(overlay).block({
@@ -308,7 +303,16 @@
 
                         jQuery(sender).attr('disabled', true);
 
-                        flexFieldsInstance.checkout();
+
+                        //Check if flex fields has errors
+                        if (!flexFieldsInstance.getState().validationStatus.isValid) {
+                            jQuery(overlay).unblock();//Stop spinner
+                            jQuery(order_review_overlay).unblock();//Stop spinner
+                            jQuery("#place_order").removeAttr('disabled');
+                            return false;
+                        } else {
+                            flexFieldsInstance.checkout();
+                        }
                     } else {
                         var $form = jQuery('form.woocommerce-checkout');
 
@@ -327,11 +331,11 @@
                             scrollTop: (jQuery('form.woocommerce-checkout').offset().top - 100)
                         }, 1000);
 
+                        jQuery('#place_order').attr('disabled', false);
+                        jQuery(overlay).unblock();//Stop spinner
+                        jQuery(order_review_overlay).unblock();//Stop spinner
                     }
 
-                    jQuery('#place_order').attr('disabled', false);
-                    jQuery(overlay).unblock();//Stop spinner
-                    jQuery(order_review_overlay).unblock();//Stop spinner
                 },
                 error: function (error) {
                     jQuery('html, body').animate({

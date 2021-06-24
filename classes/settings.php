@@ -85,8 +85,8 @@ class Settings
 
             '_Payment_Form_and_Upstream_Messaging_User_Interface_Setting' => [
                 'type' => 'title',
-                'title' => 'Payment Form and Upstream Messaging User Interface Settings',
-                'description' => 'Payment Form and Upstream Messaging User Interface Settings'
+                'title' => 'FlexFields User Interface Settings',
+                'description' => 'FlexFields is the set of sensitive credit card fields that Splitit provides to collect the credit card information'
             ],
 
             'splitit_upstream_messaging_selection' => [
@@ -140,6 +140,16 @@ class Settings
             add_action('admin_enqueue_scripts', ['Settings', 'add_admin_files']);
             add_action('admin_footer', ['Settings', 'wpb_hook_javascript']);
         }
+
+        if (isset($_GET['action']) && $_GET['action'] == 'edit' && isset($_GET['post'])) {
+            add_action('admin_enqueue_scripts', ['Settings', 'add_admin_order_files']);
+        }
+    }
+
+    public static function add_admin_order_files()
+    {
+        wp_enqueue_style('admin.css', plugins_url('assets/css/adminOrder.css', dirname(__FILE__)));
+        wp_enqueue_script('custom_admin_script', plugins_url('/assets/js/adminOrder.js', dirname(__FILE__)), ['jquery']);
     }
 
     /**
