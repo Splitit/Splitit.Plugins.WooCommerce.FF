@@ -128,6 +128,7 @@
                     localStorage.setItem('flex_fields_success', 'true');
 
 
+
                     //Submit checkout
                     jQuery('form[name="checkout"]').submit();
 
@@ -151,7 +152,15 @@
             //Check that flex fields end with success
             var flex_fields_success = localStorage.getItem('flex_fields_success');
 
+
             if (flex_fields_success == 'true') {
+
+                jQuery("#place_order").removeAttr('disabled');
+                jQuery(overlay).unblock();//Stop spinner
+                jQuery(order_review_overlay).unblock();//Stop spinner
+                removeLoader();
+
+
                 return true;
             }
 

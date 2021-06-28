@@ -68,7 +68,7 @@ trait UpstreamMessagingTrait
 
                 if (!empty($credit_cards)) {
                     ?>
-                    <fieldset data-splitit-placeholder='cards' data-splitit-cards="<?= $credit_cards; ?>"></fieldset>
+                    <fieldset data-splitit-placeholder='cards' data-splitit-style-banner-border="none" data-splitit-cards="<?= $credit_cards; ?>"></fieldset>
                     <?php
                 }
             }
@@ -93,7 +93,7 @@ trait UpstreamMessagingTrait
         if ($this->enabled == "yes") {
             if (in_array('home_page_banner', $this->splitit_upstream_messaging_selection) && is_home()) {
                 ?>
-                <img class="splitit_home_page_banner" data-splitit-placeholder='banner'
+                <img class="splitit_home_page_banner" data-splitit-style-banner-border="none" data-splitit-placeholder='banner'
                      data-splitit-banner='white:use-cc-pay-over-time' width='728'/>
                 <?php
             }
@@ -119,7 +119,7 @@ trait UpstreamMessagingTrait
             if (in_array('shop', $this->splitit_upstream_messaging_selection) && is_shop()) {
                 ?>
                 <img class="splitit_shop_page_banner" data-splitit-placeholder='banner'
-                     data-splitit-banner='white:use-cc-pay-over-time' width='728'/>
+                     data-splitit-banner='white:use-cc-pay-over-time' data-splitit-style-banner-border="none" width='728'/>
                 <?php
             }
         }
@@ -150,6 +150,7 @@ trait UpstreamMessagingTrait
                     <div
                             class="splitit_product_page_banner"
                             data-splitit='true' ;
+                            data-splitit-style-banner-border="none" ;
                             data-splitit-amount="<?= $price ?>" ;
                             data-splitit-type='banner-top' ;
                             data-splitit-style-align='right' ;
@@ -207,6 +208,7 @@ trait UpstreamMessagingTrait
                             class="splitit_cart_page_banner"
                             data-splitit='true' ;
                             data-splitit-amount="<?= $price ?>" ;
+                            data-splitit-style-banner-border="none" ;
                             data-splitit-type='banner-top' ;
                             data-splitit-style-align='right' ;
                             data-splitit-num-installments="<?= $installments ?>">
@@ -256,7 +258,7 @@ trait UpstreamMessagingTrait
             if (in_array('checkout', $this->splitit_upstream_messaging_selection) && is_checkout()) {
                 ?>
                 <img class="splitit_checkout_page_banner" data-splitit-placeholder="banner"
-                     data-splitit-banner="white:use-cc-pay-over-time" width="728"/>
+                     data-splitit-banner="white:use-cc-pay-over-time" data-splitit-style-banner-border="none" width="728"/>
                 <?php
             }
         }

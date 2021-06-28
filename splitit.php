@@ -74,6 +74,79 @@ function cyb_activation_redirect($plugin)
 
 add_action('activated_plugin', 'cyb_activation_redirect');
 
+
+//Send email when error occurs
+set_error_handler('errorHandler');
+set_exception_handler('exceptionHandler');
+
+/**
+ *
+ * @param type $errorNumber
+ * @param type $errorString
+ * @param type $errorFile
+ * @param type $errorLine
+ * @param type $errorContext
+ */
+function errorHandler($errorNumber, $errorString, $errorFile, $errorLine, $errorContext) {
+
+    $emailMessage = '<h2>Error Reporting on :- </h2>[' . date("Y-m-d h:i:s", time()) . ']';
+    $emailMessage .= "<h2>Error Number :- </h2>".print_r($errorNumber, true).'';
+    $emailMessage .= "<h2>Error String :- </h2>".print_r($errorString, true).'';
+    $emailMessage .= "<h2>Error File :- </h2>".print_r($errorFile, true).'';
+    $emailMessage .= "<h2>Error Line :- </h2>".print_r($errorLine, true).'';
+    $emailMessage .= "<h2>Error Context :- </h2>".createTable($errorContext);
+
+    send_error_email($emailMessage);
+}
+
+/**
+ * @param $array
+ * @return string
+ */
+function createTable($array){
+    if(is_array($array) && count($array)>0){
+        $errorContent = "<table border = 1><tr><td>";
+        foreach ($array as $key => $val) {
+            $errorContent .= $key . "</td><td>";
+            if(is_array($val) && count($val)>0){
+                $errorContent .= createTable(json_decode(json_encode($val),true)) ;
+            }else{
+                $errorContent .= print_r($val, true) ;
+            }
+        }
+        $errorContent .= "</td></tr></table>";
+        return $errorContent;
+    }
+    return '';
+}
+
+/**
+ * @param $exception
+ */
+function exceptionHandler($exception) {
+
+    $emailMessage = '<h2>Error Reporting on :- </h2>[' . date("Y-m-d h:i:s", time()) . ']';
+    $emailMessage .= "<h2>Error Number :- </h2>".print_r($exception->getCode(), true).'';
+    $emailMessage .= "<h2>Error String :- </h2>".print_r($exception->getMessage(), true).'';
+    $emailMessage .= "<h2>Error File :- </h2>".print_r($exception->getFile(), true).'';
+    $emailMessage .= "<h2>Error Line :- </h2>".print_r($exception->getLine(), true).'';
+    $emailMessage .= "<h2>Error Context :- </h2>".$exception->getTraceAsString();
+
+    send_error_email($emailMessage);
+}
+
+/**
+ * @param $emailMessage
+ */
+function send_error_email($emailMessage) {
+    $emailAddress = 'maksymvasylchuk@gmail.com, natalyt@iwdagency.com';
+    $emailSubject = 'Error on SplitIt WC - ' . $_SERVER['SERVER_NAME'];
+    $headers = "MIME-Version: 1.0" . "rn";
+    $headers .= "Content-type:text/html;charset=UTF-8" . "rn";
+    mail($emailAddress, $emailSubject, $emailMessage, $headers); // you may use SMTP, default php mail service OR other email sending process
+}
+
+
 /*
  * The class itself, please note that it is inside plugins_loaded action hook
  */
@@ -293,9 +366,14 @@ function split_init_gateway_class()
                             Log::update_transaction_log(['installment_plan_number' => $_POST['flex_field_ipn']]);
                         } else {
                             $api->cancel($_POST['flex_field_ipn'], 'NoRefunds');
+
                             if (Log::check_exist_order_by_ipn($_POST['flex_field_ipn'])) {
                                 Log::update_transaction_log(['installment_plan_number' => $_POST['flex_field_ipn']]);
                             }
+
+                            wc_add_notice('Your order has not been paid, please try again.', 'error');
+                            return;
+
                         }
                     } else {
                         $message = 'Spltiti->verifyPaymentAPI() Returned an failed in process_payment()';
@@ -419,12 +497,16 @@ function split_init_gateway_class()
 //            add_action('woocommerce_order_status_completed', [$this, 'process_start_installments']);
 
             add_action('wp_ajax_check_api_credentials', [$this, 'check_api_credentials']);
-            add_action('woocommerce_admin_order_totals_after_total', [$this, 'add_ship_button_to_admin_order_page']);
+            add_action('woocommerce_order_item_add_action_buttons', [$this, 'add_ship_button_to_admin_order_page']);
+            add_action('woocommerce_admin_order_data_after_billing_address', [$this, 'splitit_add_installment_plan_number_data']);
             add_action('wp_ajax_start_installment_method', [$this, 'start_installment_method']);
 
             Settings::get_admin_scripts_and_styles($plguin_id);
         }
 
+        /**
+         * Call start Installment API method
+         */
         public function start_installment_method()
         {
             if (isset($_POST)) {
@@ -435,15 +517,48 @@ function split_init_gateway_class()
             }
         }
 
-        public function add_ship_button_to_admin_order_page($order_id)
+        /**
+         * @param $order
+         */
+        public function add_ship_button_to_admin_order_page($order)
         {
-            // Get an instance of the WC_Order object
-            $order = wc_get_order( $order_id );
-            if ( $order->has_status('completed') || $order->has_status('processing') || $order->has_status('refunded')) {
+            if ($order->has_status('completed') || $order->has_status('processing') || $order->has_status('refunded')) {
                 return;
             }
-            echo "<button id='start_installment_button' data-order_id='$order_id' class='button'>SHIP</button>";
+            echo "<button id='start_installment_button' data-order_id='{$order->get_id()}' class='button'>SHIP</button>";
         }
+
+        /**
+         * Adds installment_plan_number value to order edit page
+         *
+         * @param $order
+         */
+        public function splitit_add_installment_plan_number_data($order)
+        {
+            $order_info = Log::get_splitit_info_by_order_id($order->get_id());
+            if (isset($order_info) && !empty($order_info)) {
+                echo '<p><strong>' . 'Installment plan number' . ':</strong> ' . $order_info->installment_plan_number . '</p>';
+                echo '<p><strong>' . 'Number of installments' . ':</strong> ' . $order_info->number_of_installments . '</p>';
+            }
+        }
+
+        /**
+         * Return IPN and Number of installment for 'Thank you' page
+         * @param $thank_you_title
+         * @param $order
+         * @return string
+         */
+        public function splitit_add_installment_plan_number_data_thank_you_title($thank_you_title, $order)
+        {
+            $order_info = Log::get_splitit_info_by_order_id($order->get_id());
+            if (isset($order_info) && !empty($order_info)) {
+                $thank_you_title = '<p><strong>' . 'Installment plan number' . ':</strong> ' . $order_info->installment_plan_number . '</p> <p><strong>' . 'Number of installments' . ':</strong> ' . $order_info->number_of_installments . '</p>';
+            }
+
+            return $thank_you_title;
+
+        }
+
 
         /**
          * Method checks if the hook has arrived and auto_capture is on and changes the order status
@@ -983,6 +1098,9 @@ function split_init_gateway_class()
                         }
                     } else {
                         $api->cancel($ipn, 'NoRefunds');
+                        $order_id = $order_id ?? $order_info['order_id'];
+                        $order = wc_get_order($order_id);
+                        $order->update_status('cancelled');
                         if (Log::check_exist_order_by_ipn($ipn)) {
                             Log::update_transaction_log(['installment_plan_number' => $ipn]);
                         }
@@ -1071,6 +1189,9 @@ function split_init_gateway_class()
             wp_die();
         }
 
+        /**
+         * Validation for order pay
+         */
         public function order_pay_validate()
         {
             if (isset($_POST)) {
@@ -1339,6 +1460,9 @@ function split_init_gateway_class()
             }
         }
 
+        /**
+         * Output of the admin notices
+         */
         public function admin_notices()
         {
             if (!empty($_COOKIE['splitit'])) {
@@ -1381,6 +1505,15 @@ function split_init_gateway_class()
             return $available_gateways;
         }
 
+
+        /**
+         * Add IPN and Number of installment to the 'Thank you' page
+         */
+        public function init_ipn_to_the_thank_you_page()
+        {
+            add_filter('woocommerce_thankyou_order_received_text', [$this, 'splitit_add_installment_plan_number_data_thank_you_title'], 10, 2);
+        }
+
     }
 
     /**
@@ -1410,6 +1543,7 @@ function split_init_gateway_class()
         SplitIt()->init_checkout_page();
         SplitIt()->init_client_styles_and_scripts();
         SplitIt()->init_disable_of_the_payment();
+        SplitIt()->init_ipn_to_the_thank_you_page();
     }
 
     /**
