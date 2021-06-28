@@ -313,4 +313,18 @@ class Log
         return !empty($order_id[0]) ? true : false;
     }
 
+    /**
+     * Check if order exists by ipn
+     * @param $ipn
+     * @return bool
+     */
+    public static function get_order_id_by_ipn($ipn)
+    {
+        global $wpdb;
+
+        $order_id = $wpdb->get_results("Select order_id FROM " . $wpdb->prefix . "splitit_transactions_log WHERE installment_plan_number='$ipn' LIMIT 1");
+
+        return $order_id[0] ?? null;
+    }
+
 }

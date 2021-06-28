@@ -1098,15 +1098,17 @@ function split_init_gateway_class()
                         }
                     } else {
                         $api->cancel($ipn, 'NoRefunds');
-                        $order_id = $order_id ?? $order_info['order_id'];
-                        $order = wc_get_order($order_id);
+                        $order_id_by_ipn = Log::get_order_id_by_ipn($ipn);
+                        $order_id_in_method = $order_id ?? $order_by_transaction->order_id;
+                        $order = wc_get_order($order_id_by_ipn->order_id ?? $order_id_in_method);
                         $order->update_status('cancelled');
                         if (Log::check_exist_order_by_ipn($ipn)) {
                             Log::update_transaction_log(['installment_plan_number' => $ipn]);
                         }
                     }
-                    $order_id = $order_id ?? $order_info['order_id'];
-                    $api->update($order_id, $ipn);
+                    $order_id_by_ipn = Log::get_order_id_by_ipn($ipn);
+                    $order_id_in_method = $order_id ?? $order_by_transaction->order_id;
+                    $api->update($order_id_by_ipn->order_id ?? $order_id_in_method, $ipn);
                 } else {
                     $message = 'Spltiti->verifyPaymentAPI() Returned an failed';
                     $data = [
