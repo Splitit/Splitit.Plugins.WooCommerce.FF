@@ -354,6 +354,26 @@ trait UpstreamMessagingTrait
     }
 
     /**
+     * Method for getting array of installments by price
+     */
+    public function check_if_price_in_range($price)
+    {
+        if ($this->enabled == "yes") {
+            $key = $this->get_installment_ic_to_by_price_for_range($this->splitit_inst_conf['ic_to'], $price, $this->splitit_inst_conf['ic_from']);
+
+            if (isset($this->splitit_inst_conf['ic_installment'])) {
+                if (array_key_exists($key, $this->splitit_inst_conf['ic_installment'])) {
+                    $installment = $this->splitit_inst_conf['ic_installment'][$key];
+
+                    return explode(',', $installment);
+                }
+            }
+
+            return [];
+        }
+    }
+
+    /**
      * Method for getting installment range key
      */
     public function get_installment_ic_to_by_price($installments, $price_product, $installments_from)
@@ -385,6 +405,45 @@ trait UpstreamMessagingTrait
 
                 if ($price_product > $last_price) {
                     return array_search ($last_price, $orig_installments);
+                }
+            } else {
+                return -1;
+            }
+        }
+    }
+
+    /**
+     * Method for getting installment range key
+     */
+    public function get_installment_ic_to_by_price_for_range($installments, $price_product, $installments_from)
+    {
+        if ($this->enabled == "yes") {
+            if (isset($installments) && isset($price_product) && isset($installments_from)) {
+                $orig_installments = $installments;
+                $orig_installments_from = $installments_from;
+                sort($installments);
+                sort($installments_from);
+                $numItems = count($installments);
+                $i = 0;
+                $last_key = '';
+                $last_price = '';
+                foreach ($installments as $key => $price) {
+                    if (++$i === $numItems) {
+                        $last_key = $key;
+                        $last_price = $price;
+                    }
+                    if ($price_product <= $price) {
+                        if ($key == 0) {
+                            if (isset($installments_from[$key]) && $installments_from[$key] > $price_product) {
+                                return -1;
+                            }
+                        }
+                        return array_search ($price, $orig_installments);
+                    }
+                }
+
+                if ($price_product > $last_price) {
+                    return -1;
                 }
             } else {
                 return -1;

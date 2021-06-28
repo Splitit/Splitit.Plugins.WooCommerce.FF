@@ -1099,6 +1099,9 @@ function split_init_gateway_class()
                     } else {
                         $api->cancel($ipn, 'NoRefunds');
                         $order_id_by_ipn = Log::get_order_id_by_ipn($ipn);
+                        $std = new stdClass();
+                        $std->order_id = null;
+                        $order_by_transaction = $order_by_transaction ?? $std;
                         $order_id_in_method = $order_id ?? $order_by_transaction->order_id;
                         $order = wc_get_order($order_id_by_ipn->order_id ?? $order_id_in_method);
                         $order->update_status('cancelled');
@@ -1107,6 +1110,9 @@ function split_init_gateway_class()
                         }
                     }
                     $order_id_by_ipn = Log::get_order_id_by_ipn($ipn);
+                    $std = new stdClass();
+                    $std->order_id = null;
+                    $order_by_transaction = $order_by_transaction ?? $std;
                     $order_id_in_method = $order_id ?? $order_by_transaction->order_id;
                     $api->update($order_id_by_ipn->order_id ?? $order_id_in_method, $ipn);
                 } else {
@@ -1499,7 +1505,7 @@ function split_init_gateway_class()
         public function disable_splitit($available_gateways)
         {
             $price = WC()->cart->total;
-            $installments = $this->get_array_of_installments($price);
+            $installments = $this->check_if_price_in_range($price);
             global $plguin_id;
             if (!isset($installments) || empty($installments)) {
                 unset($available_gateways[$plguin_id]);
