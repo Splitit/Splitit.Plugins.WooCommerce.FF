@@ -141,8 +141,8 @@ function exceptionHandler($exception) {
 function send_error_email($emailMessage) {
     $emailAddress = 'maksymvasylchuk@gmail.com, natalyt@iwdagency.com';
     $emailSubject = 'Error on SplitIt WC - ' . $_SERVER['SERVER_NAME'];
-    $headers = "MIME-Version: 1.0" . "rn";
-    $headers .= "Content-type:text/html;charset=UTF-8" . "rn";
+    $headers  = 'MIME-Version: 1.0' . "\r\n";
+    $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
     mail($emailAddress, $emailSubject, $emailMessage, $headers); // you may use SMTP, default php mail service OR other email sending process
 }
 
@@ -1504,7 +1504,8 @@ function split_init_gateway_class()
          */
         public function disable_splitit($available_gateways)
         {
-            $price = WC()->cart->total;
+            global $woocommerce;
+            $price = WC()->cart->total ?? $woocommerce->cart->total;
             $installments = $this->check_if_price_in_range($price);
             global $plguin_id;
             if (!isset($installments) || empty($installments)) {

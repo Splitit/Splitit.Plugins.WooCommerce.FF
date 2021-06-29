@@ -11,17 +11,23 @@
     <div id="splitit-error-box"></div>
     <div id="splitit-terms-conditions"></div>
 </div>
+<style>
+    #content .entry-content .woocommerce {
+        position: inherit !important;
+    }
+</style>
 <script type="application/javascript">
-    var overlay = '.nv-content-wrap';
-    var a = '.woocommerce-checkout-payment, .woocommerce-checkout-review-order-table, #order_review, .woocommerce, .nv-content-wrap, .entry-content, #payment, form, .blockUI, .entry-content, form#order_review, .woocommerce-order-pay, .nv-content-wrap';
+
+    var overlay = '#content .entry-content .woocommerce';
+    var a = '#content .entry-content .woocommerce';
     var checkoutHasErrors = false;
-    var order_review_overlay = '.woocommerce-checkout-payment, .woocommerce-checkout-review-order-table, #order_review';
+   var order_review_overlay = '#content .entry-content .woocommerce';
     localStorage.setItem('flex_fields_success', 'false');
     (function ($) {
         "use strict";
         $(document).ready(function ($) {
             //Start spinner
-            var a = '.woocommerce-checkout-payment, .woocommerce-checkout-review-order-table, #order_review';
+            var a = '#content .entry-content .woocommerce';
             $(a).block({
                 message: null,
                 overlayCSS: {
