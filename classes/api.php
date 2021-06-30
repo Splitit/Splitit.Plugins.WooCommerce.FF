@@ -4,6 +4,12 @@ if (!defined('ABSPATH')) {
 }
 require_once(__DIR__ . '/../vendor/autoload.php');
 
+
+$vendor = __DIR__ . '/../vendor';
+require_once "$vendor/guzzlehttp/guzzle/src/functions_include.php";
+require_once "$vendor/guzzlehttp/psr7/src/functions_include.php";
+require_once "$vendor/guzzlehttp/promises/src/functions_include.php";
+
 use SplititSdkClient\Api\InstallmentPlanApi;
 use SplititSdkClient\Api\LoginApi;
 use SplititSdkClient\Configuration;
