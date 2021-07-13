@@ -1057,10 +1057,11 @@ function split_init_gateway_class()
                     Log::update_transaction_log(['installment_plan_number' => $ipn]);
                 }
 
+                $message = 'Async hook arrived';
                 $data = [
                     'user_id' => $order_info->user_id,
                     'method' => 'splitit_payment_success_async() Splitit',
-                    'message' => 'Async hook arrived'
+                    'message' => $message
                 ];
                 Log::save_log_info($data, $message);
             } catch (Exception $e) {
