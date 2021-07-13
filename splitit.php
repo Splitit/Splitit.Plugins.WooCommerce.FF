@@ -74,7 +74,6 @@ function cyb_activation_redirect($plugin)
 
 add_action('activated_plugin', 'cyb_activation_redirect');
 
-
 /*
  * The class itself, please note that it is inside plugins_loaded action hook
  */
@@ -971,25 +970,25 @@ function split_init_gateway_class()
         public function splitit_payment_success_async()
         {
             try {
-                $ipn = isset($_GET['InstallmentPlanNumber']) ? wc_clean($_GET['InstallmentPlanNumber']) : false;
-                $order_info = Log::get_order_info_by_ipn($ipn);
-                // Processing an order created through the admin panel
-                if (!$order_info) {
-                    $order_by_transaction = Log::select_from_transaction_log_by_ipn($ipn);
-                    $order = wc_get_order($order_by_transaction->order_id);
-                    $order_total_amount = $order->get_total();
-                } else {
-                    $order_total_amount = $order_info->set_total;
-                }
-                $api = new api($this->settings);
 
-                $verifyData = $api->verifyPayment($ipn);
-                if ($verifyData->getResponseHeader()->getSucceeded()) {
-                    if ($verifyData->getIsPaid() && $verifyData->getOriginalAmountPaid() == $order_total_amount) {
-                        if (!Log::check_exist_order_by_ipn($ipn)) {
+                $ipn = isset($_GET['InstallmentPlanNumber']) ? wc_clean($_GET['InstallmentPlanNumber']) : false;
+                if (!Log::check_exist_order_by_ipn($ipn)) {
+                    $order_info = Log::get_order_info_by_ipn($ipn);
+                    // Processing an order created through the admin panel
+                    if (!$order_info) {
+                        $order_by_transaction = Log::select_from_transaction_log_by_ipn($ipn);
+                        $order = wc_get_order($order_by_transaction->order_id);
+                        $order_total_amount = $order->get_total() ?? 0;
+                    } else {
+                        $order_total_amount = $order_info->set_total ?? 0;
+                    }
+                    $api = new api($this->settings);
+
+                    $verifyData = $api->verifyPayment($ipn);
+                    if ($verifyData->getResponseHeader()->getSucceeded()) {
+                        if ($verifyData->getIsPaid() && $verifyData->getOriginalAmountPaid() == $order_total_amount) {
                             $checkout = new checkout();
                             $order_id = $checkout->create_checkout($order_info);
-
                             $ipn_info = $api->get_ipn_info($ipn);
                             $data = [
                                 'user_id' => $order_info->user_id,
@@ -1012,7 +1011,6 @@ function split_init_gateway_class()
 
                             if (!$this->settings['splitit_auto_capture']) {
                                 $api->start_installments($ipn);
-
                                 $message = 'ASYNC Hook call start installmentAPI';
                                 $data = [
                                     'user_id' => $order_info->user_id,
@@ -1021,40 +1019,50 @@ function split_init_gateway_class()
                                 ];
                                 Log::save_log_info($data, $message);
                             }
+
                         } else {
-                            Log::update_transaction_log(['installment_plan_number' => $ipn]);
+                            $api->cancel($ipn, 'NoRefunds');
+                            $order_id_by_ipn = Log::get_order_id_by_ipn($ipn);
+                            $std = new stdClass();
+                            $std->order_id = null;
+                            $order_by_transaction = $order_by_transaction ?? $std;
+                            $order_id_in_method = $order_id ?? $order_by_transaction->order_id;
+                            $order = wc_get_order($order_id_by_ipn->order_id ?? $order_id_in_method);
+                            if (isset($order) && !empty($order)) {
+                                $order->update_status('cancelled');
+                            }
+                            if (Log::check_exist_order_by_ipn($ipn)) {
+                                Log::update_transaction_log(['installment_plan_number' => $ipn]);
+                            }
                         }
-                    } else {
-                        $api->cancel($ipn, 'NoRefunds');
                         $order_id_by_ipn = Log::get_order_id_by_ipn($ipn);
                         $std = new stdClass();
                         $std->order_id = null;
                         $order_by_transaction = $order_by_transaction ?? $std;
                         $order_id_in_method = $order_id ?? $order_by_transaction->order_id;
-                        $order = wc_get_order($order_id_by_ipn->order_id ?? $order_id_in_method);
-                        $order->update_status('cancelled');
+                        $api->update($order_id_by_ipn->order_id ?? $order_id_in_method, $ipn);
+                    } else {
+                        $message = 'Spltiti->verifyPaymentAPI() Returned an failed';
+                        $data = [
+                            'user_id' => $order_info->user_id ? $order_info->user_id : null,
+                            'method' => 'splitit_payment_success_async() Splitit',
+                            'message' => $message
+                        ];
+                        Log::save_log_info($data, $message, 'error');
                         if (Log::check_exist_order_by_ipn($ipn)) {
                             Log::update_transaction_log(['installment_plan_number' => $ipn]);
                         }
                     }
-                    $order_id_by_ipn = Log::get_order_id_by_ipn($ipn);
-                    $std = new stdClass();
-                    $std->order_id = null;
-                    $order_by_transaction = $order_by_transaction ?? $std;
-                    $order_id_in_method = $order_id ?? $order_by_transaction->order_id;
-                    $api->update($order_id_by_ipn->order_id ?? $order_id_in_method, $ipn);
                 } else {
-                    $message = 'Spltiti->verifyPaymentAPI() Returned an failed';
-                    $data = [
-                        'user_id' => $order_info->user_id ? $order_info->user_id : null,
-                        'method' => 'splitit_payment_success_async() Splitit',
-                        'message' => $message
-                    ];
-                    Log::save_log_info($data, $message, 'error');
-                    if (Log::check_exist_order_by_ipn($ipn)) {
-                        Log::update_transaction_log(['installment_plan_number' => $ipn]);
-                    }
+                    Log::update_transaction_log(['installment_plan_number' => $ipn]);
                 }
+
+                $data = [
+                    'user_id' => $order_info->user_id,
+                    'method' => 'splitit_payment_success_async() Splitit',
+                    'message' => 'Async hook arrived'
+                ];
+                Log::save_log_info($data, $message);
             } catch (Exception $e) {
                 $message = $e->getMessage();
                 $data = [
@@ -1432,6 +1440,10 @@ function split_init_gateway_class()
          */
         public function disable_splitit($available_gateways)
         {
+            if (is_admin()) {
+                return $available_gateways;
+            }
+
             global $woocommerce;
             $price = WC()->cart->total ?? $woocommerce->cart->total;
             $installments = $this->check_if_price_in_range($price);
