@@ -80,7 +80,25 @@ trait UpstreamMessagingTrait
                 if (!empty($credit_cards)) {
                     ?>
                     <fieldset data-splitit-placeholder='cards' data-splitit-style-banner-border="none"
-                              data-splitit-cards="<?= $credit_cards; ?>"></fieldset>
+                              data-splitit-cards="<?= $credit_cards; ?>" class="splitit_footer_cards_banner"></fieldset>
+                    <style>
+                        .splitit_footer_cards_banner {
+                            margin: 15px;
+                        }
+                        .splitit_footer_cards_banner img{
+                            display: inline-block;
+                            width: 60px;
+                            height: auto;
+                        }
+
+                        .splitit_footer_cards_banner legend ~ img{
+                            margin-left: 10px;
+                        }
+
+                        .splitit_footer_cards_banner > img:last-child{
+                            margin-right: 10px;
+                        }
+                    </style>
                     <?php
                 }
             }
