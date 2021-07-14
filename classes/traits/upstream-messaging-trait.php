@@ -140,9 +140,19 @@ trait UpstreamMessagingTrait
         if ($this->enabled == "yes") {
             if (in_array('shop', $this->splitit_upstream_messaging_selection) && is_shop()) {
                 ?>
+                     <div class="splitit_shop_page_wrapper">
                 <img class="splitit_shop_page_banner" data-splitit-placeholder='banner'
                      data-splitit-banner='white:use-cc-pay-over-time' data-splitit-style-banner-border="none"
                      width='728'/>
+                     </div>
+
+                <style>
+                    .splitit_shop_page_wrapper {
+                        width: 100%;
+                        display: flex;
+                        justify-content: center;
+                    }
+                </style>
                 <?php
             }
         }
